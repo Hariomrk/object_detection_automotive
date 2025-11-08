@@ -1,0 +1,784 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Hariomrk/object_detection_automotive/blob/main/%20week2%20work\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "shlFfLEcQea1"
+      },
+      "source": [
+        "[![Roboflow Notebooks](https://media.roboflow.com/notebooks/template/bannertest2-2.png?ik-sdk-version=javascript-1.4.3&updatedAt=1672932710194)](https://github.com/roboflow/notebooks)\n",
+        "\n",
+        "# YOLOv8 Tracking and Counting\n",
+        "\n",
+        "---\n",
+        "\n",
+        "[![YouTube](https://badges.aleen42.com/src/youtube.svg)](https://youtu.be/OS5qI9YBkfk)\n",
+        "[![Roboflow](https://raw.githubusercontent.com/roboflow-ai/notebooks/main/assets/badges/roboflow-blogpost.svg)](https://blog.roboflow.com/yolov8-tracking-and-counting/)\n",
+        "[![GitHub](https://badges.aleen42.com/src/github.svg)](https://github.com/roboflow/notebooks)\n",
+        "\n",
+        "Ultralytics YOLOv8 is the latest version of the YOLO (You Only Look Once) object detection and image segmentation model developed by Ultralytics. The YOLOv8 model is designed to be fast, accurate, and easy to use, making it an excellent choice for a wide range of object detection and image segmentation tasks. It can be trained on large datasets and is capable of running on a variety of hardware platforms, from CPUs to GPUs.\n",
+        "\n",
+        "## ⚠️ Disclaimer\n",
+        "\n",
+        "This notebook uses legacy versions of ByteTrack and Supervision. To be up to date, use our updated [notebook](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-and-count-vehicles-with-yolov8-and-supervison.ipynb).\n",
+        "\n",
+        "## Accompanying Blog Post\n",
+        "\n",
+        "We recommend that you follow along in this notebook while reading the [blog post](https://blog.roboflow.com/yolov8-tracking-and-counting/) on how to train YOLOv8 Tracking and Counting, concurrently.\n",
+        "\n",
+        "## Pro Tip: Use GPU Acceleration\n",
+        "\n",
+        "If you are running this notebook in Google Colab, navigate to `Edit` -> `Notebook settings` -> `Hardware accelerator`, set it to `GPU`, and then click `Save`. This will ensure your notebook uses a GPU, which will significantly speed up model training times.\n",
+        "\n",
+        "## Steps in this Tutorial\n",
+        "\n",
+        "In this tutorial, we are going to cover:\n",
+        "\n",
+        "- Before you start\n",
+        "- Download video\n",
+        "- Install YOLOv8\n",
+        "- Install ByteTrack\n",
+        "- Install Roboflow Supervision\n",
+        "- Tracking utils\n",
+        "- Load pre-trained YOLOv8 model\n",
+        "- Predict and annotate single frame\n",
+        "- Predict and annotate whole video\n",
+        "\n",
+        "**Let's begin!**"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "zCVyYjLXofL9"
+      },
+      "source": [
+        "## Before you start\n",
+        "\n",
+        "Let's make sure that we have access to GPU. We can use `nvidia-smi` command to do that. In case of any problems navigate to `Edit` -> `Notebook settings` -> `Hardware accelerator`, set it to `GPU`, and then click `Save`."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 1,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "c4okzdHlKMaj",
+        "outputId": "57454796-cf0f-4375-9e3d-2b8838b60839"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Sat Nov  8 05:30:49 2025       \n",
+            "+-----------------------------------------------------------------------------------------+\n",
+            "| NVIDIA-SMI 550.54.15              Driver Version: 550.54.15      CUDA Version: 12.4     |\n",
+            "|-----------------------------------------+------------------------+----------------------+\n",
+            "| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n",
+            "| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n",
+            "|                                         |                        |               MIG M. |\n",
+            "|=========================================+========================+======================|\n",
+            "|   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |\n",
+            "| N/A   62C    P8             10W /   70W |       0MiB /  15360MiB |      0%      Default |\n",
+            "|                                         |                        |                  N/A |\n",
+            "+-----------------------------------------+------------------------+----------------------+\n",
+            "                                                                                         \n",
+            "+-----------------------------------------------------------------------------------------+\n",
+            "| Processes:                                                                              |\n",
+            "|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |\n",
+            "|        ID   ID                                                               Usage      |\n",
+            "|=========================================================================================|\n",
+            "|  No running processes found                                                             |\n",
+            "+-----------------------------------------------------------------------------------------+\n"
+          ]
+        }
+      ],
+      "source": [
+        "!nvidia-smi"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 2,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "984J4pv4K2D-",
+        "outputId": "c53cd276-b9ea-4778-defd-2b86fc7d1ef7"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "/content\n"
+          ]
+        }
+      ],
+      "source": [
+        "import os\n",
+        "HOME = os.getcwd()\n",
+        "print(HOME)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "J_Zyej4SSZNE"
+      },
+      "source": [
+        "## Download video"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 3,
+      "metadata": {
+        "id": "ctvdpAiRSb1_",
+        "outputId": "b6c67d50-e33a-4ba8-9d9a-70ab612feaa4",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "/content\n",
+            "--2025-11-08 05:30:54--  https://docs.google.com/uc?export=download&confirm=&id=1pz68D1Gsx80MoPg-_q-IbEdESEmyVLm-\n",
+            "Resolving docs.google.com (docs.google.com)... 108.177.127.139, 108.177.127.102, 108.177.127.100, ...\n",
+            "Connecting to docs.google.com (docs.google.com)|108.177.127.139|:443... connected.\n",
+            "HTTP request sent, awaiting response... 303 See Other\n",
+            "Location: https://drive.usercontent.google.com/download?id=1pz68D1Gsx80MoPg-_q-IbEdESEmyVLm-&export=download [following]\n",
+            "--2025-11-08 05:30:54--  https://drive.usercontent.google.com/download?id=1pz68D1Gsx80MoPg-_q-IbEdESEmyVLm-&export=download\n",
+            "Resolving drive.usercontent.google.com (drive.usercontent.google.com)... 142.251.31.132, 2a00:1450:4013:c1a::84\n",
+            "Connecting to drive.usercontent.google.com (drive.usercontent.google.com)|142.251.31.132|:443... connected.\n",
+            "HTTP request sent, awaiting response... 200 OK\n",
+            "Length: 35345757 (34M) [video/mp4]\n",
+            "Saving to: ‘vehicle-counting.mp4’\n",
+            "\n",
+            "vehicle-counting.mp 100%[===================>]  33.71M  --.-KB/s    in 0.1s    \n",
+            "\n",
+            "2025-11-08 05:30:57 (230 MB/s) - ‘vehicle-counting.mp4’ saved [35345757/35345757]\n",
+            "\n"
+          ]
+        }
+      ],
+      "source": [
+        "%cd {HOME}\n",
+        "!wget --load-cookies /tmp/cookies.txt \"https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1pz68D1Gsx80MoPg-_q-IbEdESEmyVLm-' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\\1\\n/p')&id=1pz68D1Gsx80MoPg-_q-IbEdESEmyVLm-\" -O vehicle-counting.mp4 && rm -rf /tmp/cookies.txt"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 4,
+      "metadata": {
+        "id": "gtxQLn33TBWo"
+      },
+      "outputs": [],
+      "source": [
+        "SOURCE_VIDEO_PATH = f\"{HOME}/vehicle-counting.mp4\""
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "lAFba4GkombF"
+      },
+      "source": [
+        "## Install YOLOv8\n",
+        "\n",
+        "⚠️ YOLOv8 is still under heavy development. Breaking changes are being introduced almost weekly. We strive to make our YOLOv8 notebooks work with the latest version of the library. Last tests took place on **23.01.2023** with version **YOLOv8.0.17**.\n",
+        "\n",
+        "If you notice that our notebook behaves incorrectly - especially if you experience errors that prevent you from going through the tutorial - don't hesitate! Let us know and open an [issue](https://github.com/roboflow/notebooks/issues) on the Roboflow Notebooks repository."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "IGckxTNGLKDh"
+      },
+      "outputs": [],
+      "source": [
+        "# Pip install method (recommended)\n",
+        "\n",
+        "!pip install \"ultralytics<=8.3.40\"\n",
+        "\n",
+        "from IPython import display\n",
+        "display.clear_output()\n",
+        "\n",
+        "# prevent ultralytics from tracking your activity\n",
+        "!yolo settings sync=False\n",
+        "\n",
+        "import ultralytics\n",
+        "ultralytics.checks()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "0e1ilpTlovJz"
+      },
+      "source": [
+        "## Install ByteTrack\n",
+        "\n",
+        "[ByteTrack](https://github.com/ifzhang/ByteTrack) is great tracker but a bit poorly packaged. We need to jump through some fire hoops to make it work in tandem with [YOLOv8](https://github.com/ultralytics/ultralytics)."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "8KdBkOflo2xY"
+      },
+      "outputs": [],
+      "source": [
+        "%cd {HOME}\n",
+        "!git clone https://github.com/ifzhang/ByteTrack.git\n",
+        "%cd {HOME}/ByteTrack\n",
+        "\n",
+        "# workaround related to https://github.com/roboflow/notebooks/issues/80\n",
+        "!sed -i 's/onnx==1.8.1/onnx==1.9.0/g' requirements.txt\n",
+        "\n",
+        "!pip3 install -q -r requirements.txt\n",
+        "!python3 setup.py -q develop\n",
+        "!pip install -q cython_bbox\n",
+        "!pip install -q onemetric\n",
+        "# workaround related to https://github.com/roboflow/notebooks/issues/112 and https://github.com/roboflow/notebooks/issues/106\n",
+        "!pip install -q loguru lap thop\n",
+        "\n",
+        "from IPython import display\n",
+        "display.clear_output()\n",
+        "\n",
+        "\n",
+        "import sys\n",
+        "sys.path.append(f\"{HOME}/ByteTrack\")\n",
+        "\n",
+        "\n",
+        "import yolox\n",
+        "print(\"yolox.__version__:\", yolox.__version__)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "rwg-lY49o7Sf"
+      },
+      "outputs": [],
+      "source": [
+        "from yolox.tracker.byte_tracker import BYTETracker, STrack\n",
+        "from onemetric.cv.utils.iou import box_iou_batch\n",
+        "from dataclasses import dataclass\n",
+        "\n",
+        "\n",
+        "@dataclass(frozen=True)\n",
+        "class BYTETrackerArgs:\n",
+        "    track_thresh: float = 0.25\n",
+        "    track_buffer: int = 30\n",
+        "    match_thresh: float = 0.8\n",
+        "    aspect_ratio_thresh: float = 3.0\n",
+        "    min_box_area: float = 1.0\n",
+        "    mot20: bool = False"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "_kSHFj8uQ9qe"
+      },
+      "source": [
+        "## Install Roboflow Supervision"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "d60yX_PFQ9A2"
+      },
+      "outputs": [],
+      "source": [
+        "!pip install supervision==0.1.0\n",
+        "\n",
+        "\n",
+        "from IPython import display\n",
+        "display.clear_output()\n",
+        "\n",
+        "\n",
+        "import supervision\n",
+        "print(\"supervision.__version__:\", supervision.__version__)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "7YDohOpMTWH5"
+      },
+      "outputs": [],
+      "source": [
+        "from supervision.draw.color import ColorPalette\n",
+        "from supervision.geometry.dataclasses import Point\n",
+        "from supervision.video.dataclasses import VideoInfo\n",
+        "from supervision.video.source import get_video_frames_generator\n",
+        "from supervision.video.sink import VideoSink\n",
+        "from supervision.notebook.utils import show_frame_in_notebook\n",
+        "from supervision.tools.detections import Detections, BoxAnnotator\n",
+        "from supervision.tools.line_counter import LineCounter, LineCounterAnnotator"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "mPdB-v_hWxBy"
+      },
+      "source": [
+        "## Tracking utils\n",
+        "\n",
+        "Unfortunately, we have to manually match the bounding boxes coming from our model with those created by the tracker."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "SE0G6LvFAXlk"
+      },
+      "outputs": [],
+      "source": [
+        "from typing import List\n",
+        "\n",
+        "import numpy as np\n",
+        "\n",
+        "\n",
+        "# converts Detections into format that can be consumed by match_detections_with_tracks function\n",
+        "def detections2boxes(detections: Detections) -> np.ndarray:\n",
+        "    return np.hstack((\n",
+        "        detections.xyxy,\n",
+        "        detections.confidence[:, np.newaxis]\n",
+        "    ))\n",
+        "\n",
+        "\n",
+        "# converts List[STrack] into format that can be consumed by match_detections_with_tracks function\n",
+        "def tracks2boxes(tracks: List[STrack]) -> np.ndarray:\n",
+        "    return np.array([\n",
+        "        track.tlbr\n",
+        "        for track\n",
+        "        in tracks\n",
+        "    ], dtype=float)\n",
+        "\n",
+        "\n",
+        "# matches our bounding boxes with predictions\n",
+        "def match_detections_with_tracks(\n",
+        "    detections: Detections,\n",
+        "    tracks: List[STrack]\n",
+        ") -> Detections:\n",
+        "    if not np.any(detections.xyxy) or len(tracks) == 0:\n",
+        "        return np.empty((0,))\n",
+        "\n",
+        "    tracks_boxes = tracks2boxes(tracks=tracks)\n",
+        "    iou = box_iou_batch(tracks_boxes, detections.xyxy)\n",
+        "    track2detection = np.argmax(iou, axis=1)\n",
+        "\n",
+        "    tracker_ids = [None] * len(detections)\n",
+        "\n",
+        "    for tracker_index, detection_index in enumerate(track2detection):\n",
+        "        if iou[tracker_index, detection_index] != 0:\n",
+        "            tracker_ids[detection_index] = tracks[tracker_index].track_id\n",
+        "\n",
+        "    return tracker_ids"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# ---------------- Tailgating Detection Helper ---------------- #\n",
+        "def detect_tailgating(detections, min_distance_px=150):\n",
+        "    \"\"\"\n",
+        "    Detect vehicles that are following too closely based on pixel distance.\n",
+        "    :param detections: Detections object (contains xyxy and tracker_id)\n",
+        "    :param min_distance_px: threshold in pixels for tailgating alert\n",
+        "    :return: list of tuples [(id1, id2), ...] of tailgating pairs\n",
+        "    \"\"\"\n",
+        "    tailgating_pairs = []\n",
+        "    centers = []\n",
+        "\n",
+        "    # calculate center points of each detection box\n",
+        "    for xyxy, tid in zip(detections.xyxy, detections.tracker_id):\n",
+        "        if tid is None:\n",
+        "            continue\n",
+        "        x1, y1, x2, y2 = xyxy\n",
+        "        cx, cy = int((x1 + x2) / 2), int((y1 + y2) / 2)\n",
+        "        centers.append((tid, cx, cy))\n",
+        "\n",
+        "    # compare every pair of vehicles\n",
+        "    for i in range(len(centers)):\n",
+        "        for j in range(i + 1, len(centers)):\n",
+        "            id1, x1, y1 = centers[i]\n",
+        "            id2, x2, y2 = centers[j]\n",
+        "            # check vertical alignment (same lane area)\n",
+        "            if abs(x1 - x2) < 200:  # same lane roughly\n",
+        "                distance = abs(y1 - y2)\n",
+        "                if distance < min_distance_px:\n",
+        "                    tailgating_pairs.append((id1, id2))\n",
+        "    return tailgating_pairs\n"
+      ],
+      "metadata": {
+        "id": "UV8-HggfDKgn"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "c_417m4g9XVd"
+      },
+      "source": [
+        "## Load pre-trained YOLOv8 model"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "m3FMq5FcUsRc"
+      },
+      "outputs": [],
+      "source": [
+        "# settings\n",
+        "MODEL = \"yolov8x.pt\""
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "KFCV_2TR9eo_"
+      },
+      "outputs": [],
+      "source": [
+        "from ultralytics import YOLO\n",
+        "\n",
+        "model = YOLO(MODEL)\n",
+        "model.fuse()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "6to6MgPmTnCu"
+      },
+      "source": [
+        "## Predict and annotate single frame"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "yKuDnOIxsN6l"
+      },
+      "outputs": [],
+      "source": [
+        "# dict maping class_id to class_name\n",
+        "CLASS_NAMES_DICT = model.model.names\n",
+        "# class_ids of interest - car, motorcycle, bus and truck\n",
+        "CLASS_ID = [2, 3, 5, 7]"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "hZQsgCa0cFvH"
+      },
+      "outputs": [],
+      "source": [
+        "# create frame generator\n",
+        "generator = get_video_frames_generator(SOURCE_VIDEO_PATH)\n",
+        "# create instance of BoxAnnotator\n",
+        "box_annotator = BoxAnnotator(color=ColorPalette(), thickness=4, text_thickness=4, text_scale=2)\n",
+        "# acquire first video frame\n",
+        "iterator = iter(generator)\n",
+        "frame = next(iterator)\n",
+        "# model prediction on single frame and conversion to supervision Detections\n",
+        "results = model(frame)\n",
+        "detections = Detections(\n",
+        "    xyxy=results[0].boxes.xyxy.cpu().numpy(),\n",
+        "    confidence=results[0].boxes.conf.cpu().numpy(),\n",
+        "    class_id=results[0].boxes.cls.cpu().numpy().astype(int)\n",
+        ")\n",
+        "# format custom labels\n",
+        "labels = [\n",
+        "    f\"{CLASS_NAMES_DICT[class_id]} {confidence:0.2f}\"\n",
+        "    for _, confidence, class_id, tracker_id\n",
+        "    in detections\n",
+        "]\n",
+        "# annotate and display frame\n",
+        "frame = box_annotator.annotate(frame=frame, detections=detections, labels=labels)\n",
+        "\n",
+        "%matplotlib inline\n",
+        "show_frame_in_notebook(frame, (16, 16))"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "3ZbGmYfiT0EV"
+      },
+      "source": [
+        "## Predict and annotate whole video"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "MjP8Pn10XuJm"
+      },
+      "outputs": [],
+      "source": [
+        "# settings\n",
+        "LINE_START = Point(50, 1500)\n",
+        "LINE_END = Point(3840-50, 1500)\n",
+        "\n",
+        "TARGET_VIDEO_PATH = f\"{HOME}/vehicle-counting-result.mp4\""
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# new output path for tailgating result\n",
+        "TAILGATE_VIDEO_PATH = f\"{HOME}/vehicle-tailgating-result.mp4\"\n"
+      ],
+      "metadata": {
+        "id": "eqCpqA02D4_D"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "3btq7JavXknU"
+      },
+      "outputs": [],
+      "source": [
+        "VideoInfo.from_video_path(SOURCE_VIDEO_PATH)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "Q9ppb7bFvWfc"
+      },
+      "outputs": [],
+      "source": [
+        "from tqdm.notebook import tqdm\n",
+        "\n",
+        "\n",
+        "# create BYTETracker instance\n",
+        "byte_tracker = BYTETracker(BYTETrackerArgs())\n",
+        "# create VideoInfo instance\n",
+        "video_info = VideoInfo.from_video_path(SOURCE_VIDEO_PATH)\n",
+        "# create frame generator\n",
+        "generator = get_video_frames_generator(SOURCE_VIDEO_PATH)\n",
+        "# create LineCounter instance\n",
+        "line_counter = LineCounter(start=LINE_START, end=LINE_END)\n",
+        "# create instance of BoxAnnotator and LineCounterAnnotator\n",
+        "box_annotator = BoxAnnotator(color=ColorPalette(), thickness=4, text_thickness=4, text_scale=2)\n",
+        "line_annotator = LineCounterAnnotator(thickness=4, text_thickness=4, text_scale=2)\n",
+        "\n",
+        "# open target video file\n",
+        "with VideoSink(TARGET_VIDEO_PATH, video_info) as sink:\n",
+        "    # loop over video frames\n",
+        "    for frame in tqdm(generator, total=video_info.total_frames):\n",
+        "        # model prediction on single frame and conversion to supervision Detections\n",
+        "        results = model(frame)\n",
+        "        detections = Detections(\n",
+        "            xyxy=results[0].boxes.xyxy.cpu().numpy(),\n",
+        "            confidence=results[0].boxes.conf.cpu().numpy(),\n",
+        "            class_id=results[0].boxes.cls.cpu().numpy().astype(int)\n",
+        "        )\n",
+        "        # filtering out detections with unwanted classes\n",
+        "        mask = np.array([class_id in CLASS_ID for class_id in detections.class_id], dtype=bool)\n",
+        "        detections.filter(mask=mask, inplace=True)\n",
+        "        # tracking detections\n",
+        "        tracks = byte_tracker.update(\n",
+        "            output_results=detections2boxes(detections=detections),\n",
+        "            img_info=frame.shape,\n",
+        "            img_size=frame.shape\n",
+        "        )\n",
+        "        tracker_id = match_detections_with_tracks(detections=detections, tracks=tracks)\n",
+        "        detections.tracker_id = np.array(tracker_id)\n",
+        "        # filtering out detections without trackers\n",
+        "        mask = np.array([tracker_id is not None for tracker_id in detections.tracker_id], dtype=bool)\n",
+        "        detections.filter(mask=mask, inplace=True)\n",
+        "        # format custom labels\n",
+        "        labels = [\n",
+        "            f\"#{tracker_id} {CLASS_NAMES_DICT[class_id]} {confidence:0.2f}\"\n",
+        "            for _, confidence, class_id, tracker_id\n",
+        "            in detections\n",
+        "        ]\n",
+        "        # updating line counter\n",
+        "        line_counter.update(detections=detections)\n",
+        "        # annotate and display frame\n",
+        "        frame = box_annotator.annotate(frame=frame, detections=detections, labels=labels)\n",
+        "        line_annotator.annotate(frame=frame, line_counter=line_counter)\n",
+        "        sink.write_frame(frame)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from tqdm.notebook import tqdm\n",
+        "import cv2\n",
+        "\n",
+        "# create BYTETracker instance\n",
+        "byte_tracker = BYTETracker(BYTETrackerArgs())\n",
+        "# create VideoInfo instance\n",
+        "video_info = VideoInfo.from_video_path(SOURCE_VIDEO_PATH)\n",
+        "# create frame generator\n",
+        "generator = get_video_frames_generator(SOURCE_VIDEO_PATH)\n",
+        "# create BoxAnnotator instance\n",
+        "box_annotator = BoxAnnotator(color=ColorPalette(), thickness=4, text_thickness=4, text_scale=2)\n",
+        "\n",
+        "print(\"Processing tailgating detection video...\")\n",
+        "\n",
+        "# open new video file for tailgating output\n",
+        "with VideoSink(TAILGATE_VIDEO_PATH, video_info) as sink:\n",
+        "    for frame in tqdm(generator, total=video_info.total_frames):\n",
+        "        # model prediction\n",
+        "        results = model(frame)\n",
+        "        detections = Detections(\n",
+        "            xyxy=results[0].boxes.xyxy.cpu().numpy(),\n",
+        "            confidence=results[0].boxes.conf.cpu().numpy(),\n",
+        "            class_id=results[0].boxes.cls.cpu().numpy().astype(int)\n",
+        "        )\n",
+        "        # filter out unwanted classes\n",
+        "        mask = np.array([class_id in CLASS_ID for class_id in detections.class_id], dtype=bool)\n",
+        "        detections.filter(mask=mask, inplace=True)\n",
+        "\n",
+        "        # tracking\n",
+        "        tracks = byte_tracker.update(\n",
+        "            output_results=detections2boxes(detections=detections),\n",
+        "            img_info=frame.shape,\n",
+        "            img_size=frame.shape\n",
+        "        )\n",
+        "        tracker_id = match_detections_with_tracks(detections=detections, tracks=tracks)\n",
+        "        detections.tracker_id = np.array(tracker_id)\n",
+        "\n",
+        "        # remove detections without trackers\n",
+        "        mask = np.array([tid is not None for tid in detections.tracker_id], dtype=bool)\n",
+        "        detections.filter(mask=mask, inplace=True)\n",
+        "\n",
+        "        # annotate normal boxes\n",
+        "        labels = [\n",
+        "            f\"#{tracker_id} {CLASS_NAMES_DICT[class_id]} {confidence:0.2f}\"\n",
+        "            for _, confidence, class_id, tracker_id in detections\n",
+        "        ]\n",
+        "        frame = box_annotator.annotate(frame=frame, detections=detections, labels=labels)\n",
+        "\n",
+        "        # -------- tailgating detection -------- #\n",
+        "        tailgating_pairs = detect_tailgating(detections=detections, min_distance_px=150)\n",
+        "\n",
+        "        for (id1, id2) in tailgating_pairs:\n",
+        "            for xyxy, tid in zip(detections.xyxy, detections.tracker_id):\n",
+        "                if tid in (id1, id2):\n",
+        "                    x1, y1, x2, y2 = map(int, xyxy)\n",
+        "                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 5)\n",
+        "                    cv2.putText(frame, f\"TAILGATING #{tid}\", (x1, y1 - 10),\n",
+        "                                cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)\n",
+        "        # -------------------------------------- #\n",
+        "\n",
+        "        # write frame to new output video\n",
+        "        sink.write_frame(frame)\n",
+        "\n",
+        "print(f\"\\n✅ Tailgating detection video saved at: {TAILGATE_VIDEO_PATH}\")\n"
+      ],
+      "metadata": {
+        "id": "V5IvJ7urD_S4"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import numpy as np\n",
+        "np.float = float  # FIX for BYTETracker NumPy compatibility\n"
+      ],
+      "metadata": {
+        "id": "F1XjrnvgCShv"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "FMiFSEV9RIC-"
+      },
+      "source": [
+        "## 🏆 Congratulations\n",
+        "\n",
+        "### Learning Resources\n",
+        "\n",
+        "Roboflow has produced many resources that you may find interesting as you advance your knowledge of computer vision:\n",
+        "\n",
+        "- [Roboflow Notebooks](https://github.com/roboflow/notebooks): A repository of over 20 notebooks that walk through how to train custom models with a range of model types, from YOLOv7 to SegFormer.\n",
+        "- [Roboflow YouTube](https://www.youtube.com/c/Roboflow): Our library of videos featuring deep dives into the latest in computer vision, detailed tutorials that accompany our notebooks, and more.\n",
+        "- [Roboflow Discuss](https://discuss.roboflow.com/): Have a question about how to do something on Roboflow? Ask your question on our discussion forum.\n",
+        "- [Roboflow Models](https://roboflow.com): Learn about state-of-the-art models and their performance. Find links and tutorials to guide your learning.\n",
+        "\n",
+        "### Convert data formats\n",
+        "\n",
+        "Roboflow provides free utilities to convert data between dozens of popular computer vision formats. Check out [Roboflow Formats](https://roboflow.com/formats) to find tutorials on how to convert data between formats in a few clicks.\n",
+        "\n",
+        "### Connect computer vision to your project logic\n",
+        "\n",
+        "[Roboflow Templates](https://roboflow.com/templates) is a public gallery of code snippets that you can use to connect computer vision to your project logic. Code snippets range from sending emails after inference to measuring object distance between detections."
+      ]
+    }
+  ],
+  "metadata": {
+    "accelerator": "GPU",
+    "colab": {
+      "gpuType": "T4",
+      "machine_shape": "hm",
+      "provenance": [],
+      "include_colab_link": true
+    },
+    "gpuClass": "standard",
+    "kernelspec": {
+      "display_name": "Python 3",
+      "name": "python3"
+    },
+    "language_info": {
+      "name": "python",
+      "version": "3.9.6"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}
